@@ -1,0 +1,57 @@
+{
+  "name": "cocos-json-to-plist-converter",
+  "version": "1.0.0",
+  "description": "Convert Cocos Creator JSON atlas files to standard plist format and slice atlas images",
+  "main": "json-to-plist-converter.js",
+  "types": "json-to-plist-converter.ts",
+  "scripts": {
+    "convert": "node dist/json-to-plist-converter.js",
+    "convert:ts": "ts-node json-to-plist-converter.ts",
+    "slice": "node dist/slice-atlas.js",
+    "slice:ts": "ts-node slice-atlas.ts",
+    "tools": "node dist/atlas-tools.js",
+    "tools:ts": "ts-node atlas-tools.ts",
+    "example": "node example-usage.js",
+    "example:slice": "node dist/slice-example.js",
+    "test": "node example-usage.js 3",
+    "build": "tsc",
+    "help": "node dist/atlas-tools.js --help",
+    "server": "ts-node src/server.ts",
+    "server:dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
+    "start": "npm run build && node dist/server.js"
+  },
+  "keywords": [
+    "cocos",
+    "cocos-creator",
+    "plist",
+    "texture-atlas",
+    "sprite-sheet",
+    "converter",
+    "slice"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.33.0",
+    "xml2js": "^0.6.2",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "adm-zip": "^0.5.10"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/xml2js": "^0.4.14",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/adm-zip": "^0.5.5",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "bin": {
+    "cocos-to-plist": "./json-to-plist-converter.js"
+  }
+}

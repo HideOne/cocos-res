@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocos 资源处理中心</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                    Cocos 资源处理中心
+                </h1>
+                <p class="subtitle">拖拽上传文件夹或 ZIP 压缩包，自动处理图集资源</p>
+            </div>
+        </header>
+
+        <!-- 主要内容区 -->
+        <main class="main">
+            <!-- 上传区域 -->
+            <section class="upload-section">
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-content">
+                        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <h2 class="upload-title">拖拽文件到这里</h2>
+                        <p class="upload-desc">或点击选择文件</p>
+                        <div class="upload-hint">
+                            <span class="hint-item">📁 文件夹</span>
+                            <span class="hint-item">📦 ZIP 压缩包</span>
+                        </div>
+                        <input type="file" id="fileInput" class="file-input" multiple webkitdirectory directory>
+                        <input type="file" id="zipInput" class="file-input" accept=".zip" multiple>
+                        <div class="upload-buttons">
+                            <button class="btn btn-primary" onclick="selectFolder()">
+                                选择文件夹
+                            </button>
+                            <button class="btn btn-secondary" onclick="selectZip()">
+                                选择 ZIP
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 统计信息 -->
+            <section class="stats-section">
+                <!-- <div class="stat-card stat-card-highlight">
+                    <div class="stat-icon stat-icon-concurrent">🚀</div>
+                    <div class="stat-content">
+                        <div class="stat-label">并发处理</div>
+                        <div class="stat-value" id="concurrentStatus">0/2</div>
+                    </div>
+                </div> --> 
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-queue">📋</div>
+                    <div class="stat-content">
+                        <div class="stat-label">排队中</div>
+                        <div class="stat-value" id="queueCount">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-processing">⚙️</div>
+                    <div class="stat-content">
+                        <div class="stat-label">处理中</div>
+                        <div class="stat-value" id="processingCount">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-completed">✅</div>
+                    <div class="stat-content">
+                        <div class="stat-label">已完成</div>
+                        <div class="stat-value" id="completedCount">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-failed">❌</div>
+                    <div class="stat-content">
+                        <div class="stat-label">失败</div>
+                        <div class="stat-value" id="failedCount">0</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 任务列表 -->
+            <section class="tasks-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                            <rect x="9" y="3" width="6" height="4" rx="2"/>
+                        </svg>
+                        任务列表
+                    </h2>
+                    <div class="section-actions">
+                        <button class="btn btn-text" onclick="clearCompleted()">
+                            清除已完成
+                        </button>
+                        <button class="btn btn-text" onclick="clearAll()">
+                            清除全部
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tasks-container" id="tasksContainer">
+                    <!-- 任务项将动态添加 -->
+                    <div class="empty-state">
+                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <p class="empty-text">暂无任务</p>
+                        <p class="empty-hint">拖拽文件到上方区域开始处理</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 底部 -->
+        <footer class="footer">
+            <p>© 2026 Cocos 资源处理工具 | 支持图集切割、格式转换等功能</p>
+        </footer>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "server": {
+    "port": 3000,
+    "maxConcurrentTasks": 2
+  },
+  "description": {
+    "port": "服务器监听端口",
+    "maxConcurrentTasks": "最大并发处理任务数，建议根据机器性能设置（1-10）"
+  }
+}
