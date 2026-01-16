@@ -91,6 +91,7 @@ interface Task {
     progress: number;
     error?: string;
     outputPath?: string;
+    zipPath?: string; // 预生成的ZIP文件路径
     createdAt: Date;
     cancelled?: boolean; // 是否被取消
 }
@@ -239,6 +240,7 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
     if (!task) return;
     let targetDir = '';
     let folderName = ""
+    let outPath = ""
     try {
         task.status = 'processing';
         task.progress = 0;
@@ -343,7 +345,7 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
 
         // 调用处理逻辑
         console.log(`🔧 开始处理资源...`);
-        let outPath = path.join(process.cwd(), 'out', folderName);
+        outPath = path.join(process.cwd(), 'out', folderName);
 
         // 检查是否已取消
         if (task.cancelled) {
@@ -374,6 +376,30 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
         // 检查是否已取消
         if (task.cancelled) {
             throw new Error('任务已被取消');
+        }
+
+        task.progress = 90;
+        console.log(`📦 开始生成下载压缩包...`);
+
+        // 立即生成ZIP压缩包
+        const zipFileName = `${folderName}.zip`;
+        const zipPath = path.join(OUTPUT_DIR, zipFileName);
+
+        try {
+            const zip = new AdmZip();
+
+            if (fs.existsSync(outPath)) {
+                addFolderToZip(zip, outPath, '');
+                await zip.writeZipPromise(zipPath);
+
+                console.log(`✅ ZIP压缩包已生成: ${zipPath}`);
+                task.zipPath = zipPath;
+            } else {
+                console.warn(`⚠️  输出目录不存在，跳过ZIP生成: ${outPath}`);
+            }
+        } catch (zipError) {
+            console.error(`❌ 生成ZIP失败:`, zipError);
+            // ZIP生成失败不影响任务完成状态
         }
 
         task.progress = 100;
@@ -414,7 +440,13 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
             console.error('清理临时文件失败:', cleanupError);
         }
     } finally {
-        // 无论成功、失败还是取消，都尝试启动下一个任务
+        if (fs.existsSync(outPath)) {
+            fs.rmSync(outPath, { recursive: true });
+        }
+        if (fs.existsSync(targetDir)) {
+            fs.rmSync(targetDir, { recursive: true });
+        }
+        // 无论成功、失败还是取消，都尝试启动下一个任务 
         console.log(`\n🔄 任务结束，尝试启动下一个排队任务...`);
         setTimeout(() => {
             tryStartNextTask();
@@ -526,6 +558,26 @@ app.delete('/api/task/:taskId', (req: Request, res: Response) => {
         });
     }
 
+    // 清理预生成的ZIP文件
+    if (task.zipPath && fs.existsSync(task.zipPath)) {
+        try {
+            fs.unlinkSync(task.zipPath);
+            console.log(`🗑️  已删除ZIP文件: ${task.zipPath}`);
+        } catch (error) {
+            console.error(`❌ 删除ZIP文件失败:`, error);
+        }
+    }
+
+    // 清理输出目录
+    if (task.outputPath && fs.existsSync(task.outputPath)) {
+        try {
+            fs.rmSync(task.outputPath, { recursive: true });
+            console.log(`🗑️  已删除输出目录: ${task.outputPath}`);
+        } catch (error) {
+            console.error(`❌ 删除输出目录失败:`, error);
+        }
+    }
+
     tasks.delete(taskId);
 
     res.json({
@@ -594,7 +646,6 @@ app.post('/api/task/:taskId/cancel', (req: Request, res: Response) => {
 app.get('/api/download/:taskId', async (req: Request, res: Response) => {
     const { taskId } = req.params;
     const task = tasks.get(taskId);
-    console.log(tasks);
 
     if (!task || task.status !== 'completed' || !task.outputPath) {
         return res.status(404).json({
@@ -604,25 +655,52 @@ app.get('/api/download/:taskId', async (req: Request, res: Response) => {
     }
 
     try {
-        // 将处理结果打包成 ZIP
+        const fileName = `${task.name.replace(/\.[^/.]+$/, '')}.zip`;
+
+        // 优先使用预生成的ZIP文件
+        console.log("下载任务", task.zipPath)
+        if (task.zipPath && fs.existsSync(task.zipPath)) {
+            console.log(`📦 使用预生成的ZIP文件: ${task.zipPath}`);
+
+            res.setHeader('Content-Type', 'application/zip');
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+
+            // 直接发送文件流，更高效
+            const fileStream = fs.createReadStream(task.zipPath);
+            fileStream.pipe(res);
+
+            fileStream.on('error', (error) => {
+                console.error('文件流错误:', error);
+                if (!res.headersSent) {
+                    res.status(500).json({
+                        success: false,
+                        message: '下载失败'
+                    });
+                }
+            });
+
+            return;
+        }
+
+        // 备用方案：实时生成ZIP（如果预生成的文件不存在）
+        console.log(`⚠️  预生成ZIP不存在，实时生成...`);
         const zip = new AdmZip();
         const outputPath = task.outputPath;
-        console.log('outputPath', outputPath);
-        // return;
 
         if (fs.existsSync(outputPath)) {
             addFolderToZip(zip, outputPath, '');
+        } else {
+            throw new Error('输出目录不存在');
         }
 
         const zipBuffer = zip.toBuffer();
-        const fileName = `${task.name.replace(/\.[^/.]+$/, '')}-processed.zip`;
 
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
         res.send(zipBuffer);
 
     } catch (error) {
-        console.error('下载失败:', error);
+        console.error('❌ 下载失败:', error);
         res.status(500).json({
             success: false,
             message: '下载失败'

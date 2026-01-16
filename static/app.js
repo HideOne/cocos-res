@@ -1,4 +1,5 @@
-let httpUrl = 'http://localhost:3000';
+let httpUrl = 'http://192.168.0.100:12580';
+httpUrl = "";
 // 任务管理
 class TaskManager {
     constructor() {
@@ -479,13 +480,42 @@ class TaskManager {
     }
 
     // 下载结果
-    downloadResult(taskId) {
+    async downloadResult(taskId) {
         const task = this.tasks.find(t => t.id === taskId);
         if (task && task.status === 'completed' && task.serverId) {
-            showToast('info', '开始下载', `正在下载 "${task.name}" 的处理结果`);
+            // 显示全屏加载动画
+            showFullscreenLoader('正在准备下载...', '请稍候，文件正在打包中');
 
-            // 下载处理结果
-            window.location.href = httpUrl + `/api/download/${task.serverId}`;
+            try {
+                // 先检查下载是否准备好
+                const checkResponse = await fetch(httpUrl + `/api/task/${task.serverId}`);
+                if (!checkResponse.ok) {
+                    throw new Error('任务不存在');
+                }
+
+                // 显示Toast提示
+                showToast('info', '开始下载', `正在下载 "${task.name}" 的处理结果`);
+
+                // 使用隐藏的iframe进行下载，这样可以在下载开始后隐藏加载动画
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = httpUrl + `/api/download/${task.serverId}`;
+                document.body.appendChild(iframe);
+
+                // 延迟隐藏加载动画（给服务器一些准备时间）
+                setTimeout(() => {
+                    hideFullscreenLoader();
+                    // 清理iframe
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                    }, 5000);
+                }, 3000);
+
+            } catch (error) {
+                hideFullscreenLoader();
+                showToast('error', '下载失败', '无法下载文件，请重试');
+                console.error('下载失败:', error);
+            }
         }
     }
 
@@ -714,6 +744,23 @@ function showToast(type, title, message) {
         toast.style.transform = 'translateX(400px)';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// 全屏加载动画
+function showFullscreenLoader(text = '正在处理...', hint = '请稍候') {
+    const loader = document.getElementById('fullscreenLoader');
+    const loaderText = loader.querySelector('.loader-text');
+    const loaderHint = loader.querySelector('.loader-hint');
+
+    if (loaderText) loaderText.textContent = text;
+    if (loaderHint) loaderHint.textContent = hint;
+
+    loader.classList.add('active');
+}
+
+function hideFullscreenLoader() {
+    const loader = document.getElementById('fullscreenLoader');
+    loader.classList.remove('active');
 }
 
 // 全局函数
