@@ -4,9 +4,13 @@ let httpUrl = 'http://192.168.0.100:12580';
 class TaskManager {
     constructor() {
         this.tasks = [];
-        this.taskIdCounter = 1;
+        this._taskIdCounter = 0;
         this.serverQueueStatus = null; // 存储服务器队列状态
         this.init();
+    }
+
+    get taskIdCounter() {
+        return Date.now();
     }
 
     init() {
@@ -186,7 +190,7 @@ class TaskManager {
 
         if (files.length > 0) {
             const task = {
-                id: this.taskIdCounter++,
+                id: this.taskIdCounter,
                 name: dirEntry.name,
                 type: 'folder',
                 status: 'queue', // queue, processing, completed, failed
@@ -241,7 +245,7 @@ class TaskManager {
     // 处理 ZIP 文件
     handleZipFile(file) {
         const task = {
-            id: this.taskIdCounter++,
+            id: this.taskIdCounter,
             name: file.name,
             type: 'zip',
             status: 'queue',
@@ -263,9 +267,10 @@ class TaskManager {
         this.updateStats();
 
         // 自动开始处理
-        if (this.getProcessingCount() === 0) {
-            this.processNextTask();
-        }
+        // if (this.getProcessingCount() === 0) {
+        //     this.processNextTask();
+        // }
+        this.processNextTask();
     }
 
     // 处理下一个任务
@@ -334,12 +339,13 @@ class TaskManager {
                 formData.append('pathMap', JSON.stringify(pathMap));
                 formData.append('folderName', task.name);
                 formData.append('fileCount', task.files.length.toString());
-
+                formData.append('id', task.id.toString());
                 console.log('📤 上传路径映射 (前5个):',
                     Object.entries(pathMap).slice(0, 5).map(([k, v]) => `${k}: ${v}`).join('\n  '));
             } else {
                 // 上传 ZIP 文件
                 formData.append('files', task.file);
+                formData.append('id', task.id.toString());
             }
 
             // 上传到服务器
@@ -773,7 +779,7 @@ function selectFolder() {
         if (files.length > 0) {
             const folderName = files[0].webkitRelativePath.split('/')[0];
             const task = {
-                id: taskManager.taskIdCounter++,
+                id: taskManager.taskIdCounter,
                 name: folderName,
                 type: 'folder',
                 status: 'queue',

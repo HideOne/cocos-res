@@ -1,7 +1,7 @@
 {
   "server": {
     "port": 3000,
-    "maxConcurrentTasks": 2
+    "maxConcurrentTasks": 6
   },
   "description": {
     "port": "服务器监听端口",

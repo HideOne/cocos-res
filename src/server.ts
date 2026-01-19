@@ -159,7 +159,7 @@ app.post('/api/upload', upload.array('files'), async (req: Request, res: Respons
 
         // 判断是 ZIP 还是文件夹
         const isZip = files.length === 1 && files[0].originalname.endsWith('.zip');
-        const taskId = Date.now().toString();
+        const taskId = req.body.id || Date.now().toString();
 
         const task: Task = {
             id: taskId,
@@ -200,12 +200,18 @@ app.post('/api/upload', upload.array('files'), async (req: Request, res: Respons
         }
 
         // 将任务加入队列
-        taskQueue.push({
-            taskId,
-            files,
-            isZip,
-            filePathMap
-        });
+        // 先排除已存在相同 taskId 的任务
+        const existIdx = taskQueue.findIndex(item => item.taskId === taskId);
+        if (existIdx == -1) {
+            // taskQueue.splice(existIdx, 1);
+            taskQueue.push({
+                taskId,
+                files,
+                isZip,
+                filePathMap
+            });
+        }
+
 
         const currentProcessing = getProcessingTaskCount();
         const queuePosition = taskQueue.length;
