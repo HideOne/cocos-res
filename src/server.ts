@@ -15,7 +15,7 @@ const app = express();
 
 // 加载配置文件
 let CONFIG = {
-    MAX_CONCURRENT_TASKS: 2, // 最大并发任务数（默认值） 
+    MAX_CONCURRENT_TASKS: 6, // 最大并发任务数（默认值） 
     PORT: 3000
 };
 
@@ -645,7 +645,34 @@ app.post('/api/task/:taskId/cancel', (req: Request, res: Response) => {
  */
 app.get('/api/download/:taskId', async (req: Request, res: Response) => {
     const { taskId } = req.params;
-    const task = tasks.get(taskId);
+    let task = tasks.get(taskId);
+
+
+    console.error("下载任务", taskId, task)
+    if (!task) {
+        // 按名字直接找zip
+        // const zipPath = path.join(OUTPUT_DIR, `${taskId}.zip`);
+        // console.log("按名字直接找zip", taskId, zipPath)
+        // if (fs.existsSync(zipPath)) {
+        //     return res.sendFile(zipPath);
+        // } else {
+        //     return res.status(404).json({
+        //         success: false,
+        //         message: '任务未完成或结果不存在'
+        //     });
+        // }
+        task = {
+            'id': taskId,
+            'name': taskId,
+            'type': 'folder',
+            'status': 'completed',
+            'progress': 100,
+            'createdAt': new Date(),
+            'outputPath': path.join(OUTPUT_DIR, `${taskId}.zip`),
+            'zipPath': path.join(OUTPUT_DIR, `${taskId}.zip`)
+        }
+
+    }
 
     if (!task || task.status !== 'completed' || !task.outputPath) {
         return res.status(404).json({

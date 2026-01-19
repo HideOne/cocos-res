@@ -1,5 +1,5 @@
 let httpUrl = 'http://192.168.0.100:12580';
-httpUrl = "";
+// httpUrl = "";
 // 任务管理
 class TaskManager {
     constructor() {
@@ -484,32 +484,32 @@ class TaskManager {
         const task = this.tasks.find(t => t.id === taskId);
         if (task && task.status === 'completed' && task.serverId) {
             // 显示全屏加载动画
-            showFullscreenLoader('正在准备下载...', '请稍候，文件正在打包中');
+            // showFullscreenLoader('正在准备下载...', '请稍候，文件正在打包中');
 
             try {
                 // 先检查下载是否准备好
-                const checkResponse = await fetch(httpUrl + `/api/task/${task.serverId}`);
+                const checkResponse = await fetch(httpUrl + `/api/task/${task.id}`);
                 if (!checkResponse.ok) {
-                    throw new Error('任务不存在');
+                    // throw new Error('任务不存在');
                 }
 
-                // 显示Toast提示
+                // 显示Toast提示  
                 showToast('info', '开始下载', `正在下载 "${task.name}" 的处理结果`);
 
                 // 使用隐藏的iframe进行下载，这样可以在下载开始后隐藏加载动画
                 const iframe = document.createElement('iframe');
                 iframe.style.display = 'none';
-                iframe.src = httpUrl + `/api/download/${task.serverId}`;
+                iframe.src = httpUrl + `/api/download/${task.name}`;
                 document.body.appendChild(iframe);
 
                 // 延迟隐藏加载动画（给服务器一些准备时间）
-                setTimeout(() => {
-                    hideFullscreenLoader();
-                    // 清理iframe
-                    setTimeout(() => {
-                        document.body.removeChild(iframe);
-                    }, 5000);
-                }, 3000);
+                // setTimeout(() => {
+                //     hideFullscreenLoader();
+                //     // 清理iframe
+                //     setTimeout(() => {
+                //         document.body.removeChild(iframe);
+                //     }, 5000);
+                // }, 3000);
 
             } catch (error) {
                 hideFullscreenLoader();
