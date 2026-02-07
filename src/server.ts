@@ -8,8 +8,12 @@ import multer from 'multer';
 import * as fs from 'fs';
 import * as path from 'path';
 import AdmZip from 'adm-zip';
+import sharp from 'sharp';
 import { dealRes } from './dealRes';
 import { runAstcToPngWorkflow } from './astcToPng';
+
+// 禁用 sharp(libvips) 的文件缓存，防止 Windows 上文件句柄未释放导致 EBUSY
+sharp.cache(false);
 
 const app = express();
 
@@ -39,6 +43,30 @@ const RES_DIR = path.join(ROOT_DIR, 'res');
 const UPLOAD_DIR = path.join(ROOT_DIR, 'uploads');
 const STATIC_DIR = path.join(ROOT_DIR, 'static');
 const OUTPUT_DIR = path.join(ROOT_DIR, 'output');
+
+/**
+ * 带重试的目录/文件删除，解决 Windows 上 EBUSY 文件句柄未释放问题
+ */
+function rmSyncRetry(target: string, options?: fs.RmOptions, maxRetries = 5): void {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            if (fs.existsSync(target)) {
+                fs.rmSync(target, options ?? {});
+            }
+            return;
+        } catch (err: any) {
+            if ((err.code === 'EBUSY' || err.code === 'EPERM') && attempt < maxRetries) {
+                const delayMs = 500 * (attempt + 1);
+                console.warn(`⚠️  文件被占用，${delayMs}ms 后重试 (${attempt + 1}/${maxRetries}): ${err.path || target}`);
+                // 同步等待一段时间再重试
+                const waitUntil = Date.now() + delayMs;
+                while (Date.now() < waitUntil) { /* busy wait */ }
+            } else {
+                throw err;
+            }
+        }
+    }
+}
 
 // 确保必要的目录存在
 [RES_DIR, UPLOAD_DIR, OUTPUT_DIR].forEach(dir => {
@@ -412,7 +440,7 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
         task.status = 'completed';
         task.outputPath = outPath;
 
-        fs.rmSync(targetDir, { recursive: true });
+        rmSyncRetry(targetDir, { recursive: true });
         console.log(`✅ 任务完成: ${task.name}\n`);
 
     } catch (error) {
@@ -429,9 +457,7 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
         }
 
         task.progress = 0;
-        if (fs.existsSync(targetDir)) {
-            fs.rmSync(targetDir, { recursive: true });
-        }
+        rmSyncRetry(targetDir, { recursive: true });
 
         // 清理临时文件
         try {
@@ -446,12 +472,8 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
             console.error('清理临时文件失败:', cleanupError);
         }
     } finally {
-        if (fs.existsSync(outPath)) {
-            fs.rmSync(outPath, { recursive: true });
-        }
-        if (fs.existsSync(targetDir)) {
-            fs.rmSync(targetDir, { recursive: true });
-        }
+        rmSyncRetry(outPath, { recursive: true });
+        rmSyncRetry(targetDir, { recursive: true });
         // 无论成功、失败还是取消，都尝试启动下一个任务 
         console.log(`\n🔄 任务结束，尝试启动下一个排队任务...`);
         setTimeout(() => {
@@ -577,7 +599,7 @@ app.delete('/api/task/:taskId', (req: Request, res: Response) => {
     // 清理输出目录
     if (task.outputPath && fs.existsSync(task.outputPath)) {
         try {
-            fs.rmSync(task.outputPath, { recursive: true });
+            rmSyncRetry(task.outputPath, { recursive: true });
             console.log(`🗑️  已删除输出目录: ${task.outputPath}`);
         } catch (error) {
             console.error(`❌ 删除输出目录失败:`, error);

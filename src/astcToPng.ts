@@ -33,33 +33,47 @@ async function checkAstcencAvailability(): Promise<boolean> {
     }
 }
 
-async function convertAstcToPng(filePath: string): Promise<void> {
-    const outputPngPath = filePath.replace(/\.astc$/i, '.png');
+async function convertAstcToWebp(filePath: string): Promise<void> {
     const outputWebpPath = filePath.replace(/\.astc$/i, '.webp');
-
-    // 第一步：astc -> png
-    const commandPng = `${ASTCENC_CMD} -dl "${filePath}" "${outputPngPath}"`;
+    // 临时 PNG 文件路径（astcenc 只能输出到文件，无法避免）
+    const tempPngPath = filePath.replace(/\.astc$/i, '.tmp.png');
 
     try {
-        console.log(`正在解码 ASTC: ${path.basename(filePath)} -> ${path.basename(outputPngPath)}`);
-        const { stdout: out1, stderr: err1 } = await execPromise(commandPng);
+        // astcenc 解码 ASTC → 临时 PNG（astcenc 不支持流式输出，必须经过文件）
+        const command = `${ASTCENC_CMD} -dl "${filePath}" "${tempPngPath}"`;
+        console.log(`正在转换: ${path.basename(filePath)} -> ${path.basename(outputWebpPath)}`);
+        await execPromise(command);
 
-        // astcenc 有时会把警告输出到 stderr，只要不是错误就不管
-        if (err1 && !err1.includes('beware') && err1.trim().length > 0) {
-            // console.warn(`  警告:`, err1.trim());
-        }
-        // 直接将 png 文件重命名为 webp 后缀，不做实际格式转换
-        try {
-            await fs.promises.rename(outputPngPath, outputWebpPath);
-            console.log(`  SUCCESS: ${outputWebpPath} (仅重命名，不转换格式)`);
-        } catch (errConvert: any) {
-            console.error(`  重命名失败: ${outputPngPath} -> ${outputWebpPath}`);
-            console.error(`  错误信息: ${errConvert.message || errConvert}`);
-        }
+        // 读取临时 PNG 到内存 buffer，然后立即删除临时文件
+        const pngBuffer = await fs.promises.readFile(tempPngPath);
+        await fs.promises.unlink(tempPngPath);
+
+        // 提取 raw RGBA 像素数据及元信息
+        const { data: rawPixels, info } = await sharp(pngBuffer)
+            .ensureAlpha()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+
+        // 用 raw 像素数据重建 sharp 管线，标记为 premultiplied 以保留预乘 alpha
+        // astcenc 解码出的 RGBA 值保持原始预乘状态，此标记确保 sharp 不会二次预乘
+        await sharp(rawPixels, {
+            raw: {
+                width: info.width,
+                height: info.height,
+                channels: 4,
+                premultiplied: true,
+            },
+        })
+            .webp({ quality: 80, alphaQuality: 100 })
+            .toFile(outputWebpPath);
+
+        console.log(`  SUCCESS: ${outputWebpPath}`);
     } catch (error: any) {
+        // 确保临时文件被清理
+        try { await fs.promises.unlink(tempPngPath); } catch { }
+
         console.error(`  FAIL: 转换失败 ${filePath}`);
         console.error(`  错误信息: ${error.message}`);
-        // 尝试检测是否是命令未找到
         if (error.message.includes('not found') || error.message.includes('不是内部或外部命令')) {
             console.error('\n!!! 严重错误: 找不到 astcenc 工具 !!!');
         }
@@ -95,7 +109,7 @@ async function processDirectory(directory: string, processCallback?: (progress: 
         for (const file of astcFiles) {
             count++;
             console.log(`[${count}/${total}] 正在处理: ${path.relative(directory, file)}`);
-            await convertAstcToPng(file);
+            await convertAstcToWebp(file);
             processCallback?.((count / total) * 100);
         }
     } catch (err) {
