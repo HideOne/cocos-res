@@ -351,7 +351,7 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
 
         // 调用处理逻辑
         console.log(`🔧 开始处理资源...`);
-        outPath = path.join(process.cwd(), 'out', folderName);
+        outPath = path.join(ROOT_DIR, 'out', folderName);
 
         // 检查是否已取消
         if (task.cancelled) {

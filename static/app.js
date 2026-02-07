@@ -1,5 +1,13 @@
-let httpUrl = 'http://192.168.0.100:12580';
-// httpUrl = "";
+// let httpUrl = 'http://192.168.0.100:12580';
+let httpUrl = "";
+// 从 URL 参数中读取 server 配置
+const urlParams = new URLSearchParams(window.location.search);
+const serverParam = urlParams.get('server');
+if (serverParam) {
+    httpUrl = serverParam;
+}
+
+
 // 任务管理
 class TaskManager {
     constructor() {

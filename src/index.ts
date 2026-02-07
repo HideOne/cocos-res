@@ -3,12 +3,13 @@ import { dealRes } from "./dealRes";
 import * as fs from "fs";
 import * as path from "path";
 import { runAstcToPngWorkflow } from "./astcToPng";
+import { ROOT_DIR } from "./config";
 // import { convertJSONToPlist } from "./json-to-plist-converter";
 
 async function main() {
     try {
         // 遍历当前项目下的 res 目录并输出文件夹路径
-        const resDir = path.join(process.cwd(), "res");
+        const resDir = path.join(ROOT_DIR, "res");
 
         // await runAstcToPngWorkflow(resDir);
 
@@ -54,7 +55,7 @@ main()
     });
 
 async function test() {
-    let resDir = path.join(process.cwd(), "res");
+    let resDir = path.join(ROOT_DIR, "res");
 
     let dealDir = path.join(resDir, "icon-firef");
     await dealRes(dealDir);

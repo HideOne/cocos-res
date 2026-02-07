@@ -3,6 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { convertJSONToPlist } from "./json-to-plist-converter";
 import { sliceAtlas } from "./slice-atlas";
+import { ROOT_DIR } from "./config";
 
 export async function dealRes(dirpath: string, outDir?: string, processCallback?: (progress: number) => void) {
 
@@ -20,7 +21,7 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
 
     let outPath = outDir;
     if (!outPath) {
-        outPath = path.join(process.cwd(), 'out', lastDirName);
+        outPath = path.join(ROOT_DIR, 'out', lastDirName);
     }
     if (!fs.existsSync(outPath)) {
         fs.mkdirSync(outPath, { recursive: true });

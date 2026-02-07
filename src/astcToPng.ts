@@ -8,18 +8,20 @@ const execPromise = util.promisify(exec);
 
 // 1. 优先查找当前脚本目录下的 astcenc.exe
 // 2. 如果没有，则尝试直接使用 'astcenc' 命令（依赖系统 PATH）
+const ROOT_DIR = path.resolve(__dirname, '..');
 const isWin = process.platform === 'win32';
 const localAstcPath: string = isWin
-    ? path.join(process.cwd(), 'astcenc-avx2.exe')
-    : path.join(process.cwd(), 'astcenc-avx2');
+    ? path.join(ROOT_DIR, 'astcenc-avx2.exe')
+    : path.join(ROOT_DIR, 'astcenc-avx2');
 const ASTCENC_CMD: string = fs.existsSync(localAstcPath) ? `"${localAstcPath}"` : 'astcenc-avx2';
 
 // 获取目标目录，默认为当前目录
-const targetDir: string = path.join(process.cwd(), 'res');
+const targetDir: string = path.join(ROOT_DIR, 'res');
 
 async function checkAstcencAvailability(): Promise<boolean> {
     try {
         // 尝试运行 help 命令来检查工具是否存在
+        console.log('checkAstcencAvailability', ROOT_DIR, `${ASTCENC_CMD} -help`);
         await execPromise(`${ASTCENC_CMD} -help`);
         return true;
     } catch (e: any) {
