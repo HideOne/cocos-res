@@ -102,9 +102,11 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
 
                         let oldAtlasPath = path.join(path.dirname(outFilePath), atlasName);
                         let newAtlasPath = path.join(path.dirname(outFilePath), newAtlasName);
-                        if (fs.existsSync(oldAtlasPath)) {
-                            fs.renameSync(oldAtlasPath, newAtlasPath);
-                        }
+                        dealTaskList.push(() => {
+                            if (fs.existsSync(oldAtlasPath)) {
+                                fs.renameSync(oldAtlasPath, newAtlasPath);
+                            }
+                        });
                         let fntName = atlasName.replace(".webp", ".fnt");
                         let fntContent = jsonToFnt(bmfont);
                         let fntPath = path.join(path.dirname(outFilePath), fntName);
@@ -112,6 +114,13 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
                     }
                 }
 
+            }
+        }
+
+        {
+            // 处理未处理的任务
+            for (const task of dealTaskList) {
+                task();
             }
         }
 
