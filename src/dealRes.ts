@@ -45,6 +45,8 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
     // 子图uuid对应
     let spriteAtlasMap: Map<string, string> = new Map();
 
+    let dealTaskList: (() => void)[] = [];
+
     for (const key in paths) {
         let [filePath, type] = paths[key];
         let idx = Number(key);
@@ -89,6 +91,27 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
                     // console.log("write file: " + outFilePath);
                 }
 
+                if (typeName === "cc.BitmapFont") {
+                    console.log("bitmapFont: 处理bmfont字体文件 " + outFilePath);
+                    let contentJson = JSON.parse(fs.readFileSync(outFilePath, 'utf-8'));
+                    if (contentJson[5]?.[0]?.[3]?.atlasName) {
+                        let bmfont = contentJson[5]?.[0]?.[3];
+                        let atlasName = bmfont?.atlasName;
+                        // 修改扩展用png 来做字体图
+                        let newAtlasName = atlasName.replace(".webp", ".png");
+
+                        let oldAtlasPath = path.join(path.dirname(outFilePath), atlasName);
+                        let newAtlasPath = path.join(path.dirname(outFilePath), newAtlasName);
+                        if (fs.existsSync(oldAtlasPath)) {
+                            fs.renameSync(oldAtlasPath, newAtlasPath);
+                        }
+                        let fntName = atlasName.replace(".webp", ".fnt");
+                        let fntContent = jsonToFnt(bmfont);
+                        let fntPath = path.join(path.dirname(outFilePath), fntName);
+                        fs.writeFileSync(fntPath, fntContent);
+                    }
+                }
+
             }
         }
 
@@ -104,7 +127,6 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
                     fs.mkdirSync(path.dirname(outFilePath), { recursive: true });
                 }
                 fs.copyFileSync(realPath, outFilePath);
-
                 if (typeName === "sp.SkeletonData") {
                     let skeletonData = JSON.parse(fs.readFileSync(realPath, 'utf-8'));
                     let skeletonDataJson = skeletonData[5][0][4];
@@ -114,15 +136,18 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
                     } else {
                         fs.writeFileSync(outFilePath, skeletonDataJsonString);
                     }
-                    // console.log("write file: " + outFilePath); 
                 }
             }
+
+            // let importData = JSON.parse()
+
 
         }
     }
 
 
     {
+        // console.log("开始转化为plist文件");
         // 转化为plist文件
         for (const key in packs) {
             let pack = packs[key];
@@ -152,14 +177,15 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
                         }
 
                     }
-                }
 
+                }
             }
 
 
         }
 
     }
+
 
     processCallback?.(10);
     {
@@ -219,4 +245,53 @@ function findAllPlistFiles(dir: string): string[] {
         }
     }
     return results;
+}
+
+
+
+function jsonToFnt(jsonData: any) {
+    // 计算纹理图集的最大宽度和高度
+    let maxWidth = 0;
+    let maxHeight = 0;
+
+    // 遍历所有字符，找到最大的x+width和y+height
+    Object.values(jsonData.fontDefDictionary).forEach((char: any) => {
+        const rect = char.rect;
+        maxWidth = Math.max(maxWidth, rect.x + rect.width);
+        maxHeight = Math.max(maxHeight, rect.y + rect.height);
+    });
+
+    // 构建fnt格式字符串
+    let fntContent = '';
+
+    // info行
+    fntContent += `info face="CustomFont" size=${jsonData.fontSize} bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=1 aa=1 padding=0,0,0,0 spacing=1,1 outline=0\n`;
+
+    // common行
+    fntContent += `common lineHeight=${jsonData.commonHeight} base=${jsonData.commonHeight} scaleW=${maxWidth} scaleH=${maxHeight} pages=1 packed=0\n`;
+
+    // page行
+    fntContent += `page id=0 file="${jsonData.atlasName}"\n`;
+
+    // chars行
+    const charCount = Object.keys(jsonData.fontDefDictionary).length;
+    fntContent += `chars count=${charCount}\n`;
+
+    // 每个字符的定义行
+    Object.entries(jsonData.fontDefDictionary).forEach(([charId, charData]: any) => {
+        const rect = charData.rect;
+        fntContent += `char id=${charId} x=${rect.x} y=${rect.y} width=${rect.width} height=${rect.height} xoffset=${charData.xOffset} yoffset=${charData.yOffset} xadvance=${charData.xAdvance} page=0 chnl=15\n`;
+    });
+
+    // 如果有字距调整数据，添加kernings部分
+    if (jsonData.kerningDict && Object.keys(jsonData.kerningDict).length > 0) {
+        fntContent += `kernings count=${Object.keys(jsonData.kerningDict).length}\n`;
+        Object.entries(jsonData.kerningDict).forEach(([first, secondDict]) => {
+            Object.entries(secondDict).forEach(([second, amount]) => {
+                fntContent += `kerning first=${first} second=${second} amount=${amount}\n`;
+            });
+        });
+    }
+
+    return fntContent;
 }
