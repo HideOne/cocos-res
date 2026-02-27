@@ -116,14 +116,6 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
 
             }
         }
-
-        {
-            // 处理未处理的任务
-            for (const task of dealTaskList) {
-                task();
-            }
-        }
-
         realPath = path.join(nativePath, top, decompressedUuid);
         ext = findExt(realPath);
         if (ext && (ext === ".atlas" || typeName !== "cc.Asset")) {
@@ -153,6 +145,15 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
 
         }
     }
+
+
+    {
+        // 处理未处理的任务
+        for (const task of dealTaskList) {
+            task();
+        }
+    }
+
 
 
     {
