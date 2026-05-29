@@ -419,28 +419,28 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
         const zipFileName = `${folderName}.zip`;
         const zipPath = path.join(OUTPUT_DIR, zipFileName);
 
-        try {
-            const zip = new AdmZip();
+        // try {
+        //     const zip = new AdmZip();
 
-            if (fs.existsSync(outPath)) {
-                addFolderToZip(zip, outPath, '');
-                await zip.writeZipPromise(zipPath);
+        //     if (fs.existsSync(outPath)) {
+        //         addFolderToZip(zip, outPath, '');
+        //         await zip.writeZipPromise(zipPath);
 
-                console.log(`✅ ZIP压缩包已生成: ${zipPath}`);
-                task.zipPath = zipPath;
-            } else {
-                console.warn(`⚠️  输出目录不存在，跳过ZIP生成: ${outPath}`);
-            }
-        } catch (zipError) {
-            console.error(`❌ 生成ZIP失败:`, zipError);
-            // ZIP生成失败不影响任务完成状态
-        }
+        //         console.log(`✅ ZIP压缩包已生成: ${zipPath}`);
+        //         task.zipPath = zipPath;
+        //     } else {
+        //         console.warn(`⚠️  输出目录不存在，跳过ZIP生成: ${outPath}`);
+        //     }
+        // } catch (zipError) {
+        //     console.error(`❌ 生成ZIP失败:`, zipError);
+        //     // ZIP生成失败不影响任务完成状态
+        // }
 
         task.progress = 100;
         task.status = 'completed';
         task.outputPath = outPath;
 
-        rmSyncRetry(targetDir, { recursive: true });
+        // rmSyncRetry(targetDir, { recursive: true });
         console.log(`✅ 任务完成: ${task.name}\n`);
 
     } catch (error) {
@@ -457,23 +457,22 @@ async function processTask(taskId: string, files: Express.Multer.File[], isZip: 
         }
 
         task.progress = 0;
-        rmSyncRetry(targetDir, { recursive: true });
-
-        // 清理临时文件
-        try {
-            if (files && files.length > 0) {
-                files.forEach(file => {
-                    if (fs.existsSync(file.path)) {
-                        fs.unlinkSync(file.path);
-                    }
-                });
-            }
-        } catch (cleanupError) {
-            console.error('清理临时文件失败:', cleanupError);
-        }
+        // rmSyncRetry(targetDir, { recursive: true }); 
+        // // 清理临时文件
+        // try {
+        //     if (files && files.length > 0) {
+        //         files.forEach(file => {
+        //             if (fs.existsSync(file.path)) {
+        //                 fs.unlinkSync(file.path);
+        //             }
+        //         });
+        //     }
+        // } catch (cleanupError) {
+        //     console.error('清理临时文件失败:', cleanupError);
+        // }
     } finally {
-        rmSyncRetry(outPath, { recursive: true });
-        rmSyncRetry(targetDir, { recursive: true });
+        // rmSyncRetry(outPath, { recursive: true });
+        // rmSyncRetry(targetDir, { recursive: true });
         // 无论成功、失败还是取消，都尝试启动下一个任务 
         console.log(`\n🔄 任务结束，尝试启动下一个排队任务...`);
         setTimeout(() => {

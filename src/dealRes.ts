@@ -1,9 +1,10 @@
-import { decompressUuid } from "./tool";
+import { decompressUuid, findAllFiles } from "./tool";
 import * as path from "path";
 import * as fs from "fs";
 import { convertJSONToPlist } from "./json-to-plist-converter";
 import { sliceAtlas } from "./slice-atlas";
 import { ROOT_DIR } from "./config";
+import { convertWebpToPng } from "./astcToPng";
 
 export async function dealRes(dirpath: string, outDir?: string, processCallback?: (progress: number) => void) {
 
@@ -32,6 +33,8 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
     let types = config.types;
     let packs = config.packs;
 
+    // console.log("paths: ", paths);
+
     let improtPath = path.join(dirpath, 'import');
     let nativePath = path.join(dirpath, 'native');
     if (!fs.existsSync(improtPath)) {
@@ -39,6 +42,29 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
     }
     if (!fs.existsSync(nativePath)) {
         throw new Error(`native 目录不存在: ${nativePath}`);
+    }
+
+    {
+        // 去掉md5后缀
+        let files = findAllFiles(improtPath);
+        for (const file of files) {
+            if ((file.match(/\./g) || []).length === 2) {
+                fs.renameSync(
+                    file,
+                    file.replace(/\.[^.]+(?=\.[^.]+$)/, "")
+                );
+            }
+        }
+
+        files = findAllFiles(nativePath);
+        for (const file of files) {
+            if ((file.match(/\./g) || []).length === 2) {
+                fs.renameSync(
+                    file,
+                    file.replace(/\.[^.]+(?=\.[^.]+$)/, "")
+                );
+            }
+        }
     }
 
 
@@ -59,12 +85,10 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
         let ext = ""
         let typeName = types[type];
 
-        // if (types[type] === "cc.Texture2D") {
-        //     ext = ".png";
-        // }
-
         let realPath = path.join(improtPath, top, decompressedUuid);
+        // console.log("realPath: ", realPath);
         ext = findExt(realPath);
+        console.log("ext: ", ext);
         if (ext && (ext === ".atlas" || typeName !== "cc.Asset")) {
             ext = ext.replace(".astc", ".webp");
 
@@ -94,17 +118,21 @@ export async function dealRes(dirpath: string, outDir?: string, processCallback?
                 if (typeName === "cc.BitmapFont") {
                     console.log("bitmapFont: 处理bmfont字体文件 " + outFilePath);
                     let contentJson = JSON.parse(fs.readFileSync(outFilePath, 'utf-8'));
-                    if (contentJson[5]?.[0]?.[3]?.atlasName) {
-                        let bmfont = contentJson[5]?.[0]?.[3];
-                        let atlasName = bmfont?.atlasName;
+                    let bmfont = contentJson[5]?.[0]?.[3];
+                    if (bmfont?.atlasName) {
+                        let atlasName = bmfont.atlasName + "";
                         // 修改扩展用png 来做字体图
                         let newAtlasName = atlasName.replace(".webp", ".png");
+                        bmfont.atlasName = newAtlasName;
 
                         let oldAtlasPath = path.join(path.dirname(outFilePath), atlasName);
                         let newAtlasPath = path.join(path.dirname(outFilePath), newAtlasName);
                         dealTaskList.push(() => {
                             if (fs.existsSync(oldAtlasPath)) {
-                                fs.renameSync(oldAtlasPath, newAtlasPath);
+                                console.log("rename file: " + oldAtlasPath + " to " + newAtlasPath);
+                                // fs.renameSync(oldAtlasPath, newAtlasPath);
+                                convertWebpToPng(oldAtlasPath, newAtlasPath);
+
                             }
                         });
                         let fntName = atlasName.replace(".webp", ".fnt");
@@ -229,7 +257,9 @@ function findExt(realPath: string) {
     if (!fs.existsSync(path.dirname(realPath))) {
         return "";
     }
+    // console.log("path.dirname(realPath): ", path.dirname(realPath));
     const files = fs.readdirSync(path.dirname(realPath));
+    // console.log("files: " + path.basename(realPath), files);
     for (const file of files) {
         const basename = path.basename(file, path.extname(file));
         if (basename === path.basename(realPath)) {
@@ -237,6 +267,7 @@ function findExt(realPath: string) {
             return ext;
         }
     }
+    // console.log("ext: ", ext);
     return "";
 }
 

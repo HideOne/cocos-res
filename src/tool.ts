@@ -1,3 +1,8 @@
+
+
+import * as fs from "fs";
+import * as path from "path";
+
 const Base64KeyChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const AsciiTo64 = new Array(128);
 for (let i = 0; i < 128; ++i) {
@@ -59,4 +64,26 @@ export function decompressUuid(uuid: string): string {
         rawHex.slice(20, 32)
     ].join("-");
     return uuid;
+}
+
+
+/**
+ * 递归遍历指定目录，返回其下所有文件的完整路径
+ * @param dir 路径
+ * @returns 文件路径数组
+ */
+export function findAllFiles(dir: string): string[] {
+    let results: string[] = [];
+    if (!fs.existsSync(dir)) return results;
+    const list = fs.readdirSync(dir);
+    for (const file of list) {
+        const filePath = path.join(dir, file);
+        const stat = fs.statSync(filePath);
+        if (stat && stat.isDirectory()) {
+            results = results.concat(findAllFiles(filePath)); // 递归子目录
+        } else if (stat && stat.isFile()) {
+            results.push(filePath);
+        }
+    }
+    return results;
 }

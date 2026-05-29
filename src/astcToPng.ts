@@ -116,6 +116,29 @@ async function processDirectory(directory: string, processCallback?: (progress: 
         console.error(`无法读取目录: ${directory}`, err);
     }
 }
+
+
+/**
+ * 将指定输入路径的 webp 文件转换为 png 格式并输出到输出路径
+ * @param inputWebpPath 输入的 .webp 文件路径
+ * @param outputPngPath 输出的 .png 文件路径
+ */
+export async function convertWebpToPng(inputWebpPath: string, outputPngPath: string): Promise<void> {
+
+    try {
+        // sharp 将自动读取并解码webp，转换并写出为png
+        await sharp(inputWebpPath)
+            .png()
+            .toFile(outputPngPath);
+        console.log(`转换完成: ${inputWebpPath} -> ${outputPngPath}`);
+    } catch (err: any) {
+        console.error(`webp 转 png 失败: ${inputWebpPath} -> ${outputPngPath}`);
+        console.error(err.message || err);
+        throw err;
+    }
+}
+
+
 export async function runAstcToPngWorkflow(targetDir: string, processCallback?: (progress: number) => void): Promise<void> {
     console.log('================================================');
     console.log(`工作目录: ${targetDir}`);
